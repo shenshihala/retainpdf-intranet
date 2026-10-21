@@ -1,4 +1,4 @@
-import { getOcrProviderDefinition } from "@/platform/config/providers.js";
+import { getOcrProviderDefinition, ocrProviderRequiresToken } from "@/platform/config/providers.js";
 import {
   credentialOcrToken,
 } from "./selectors-port.js";
@@ -33,6 +33,16 @@ export async function ensureOcrCredentialValidationReady({
   legacyValidationCachePort?: unknown;
 }) {
   const definition = getOcrProviderDefinition(providerId);
+  if (!ocrProviderRequiresToken(definition.id)) {
+    return {
+      ok: true,
+      status: "not_required",
+      definition,
+      credentialRef: "",
+      token: "",
+      result: null,
+    };
+  }
   const credentialRef = `${credentials?.ocrCredentialRef || ""}`.trim();
   const token = credentialOcrToken(credentials, {
     providerId: definition.id,

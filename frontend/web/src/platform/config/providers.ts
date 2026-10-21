@@ -16,6 +16,26 @@ export const OCR_PROVIDER_DEFINITIONS = [
     docsUrl: "https://aistudio.baidu.com/account/accessToken",
     docsLabel: "获取 Token",
     supportsValidation: true,
+    requiresToken: true,
+    intranetSettings: false,
+  },
+  {
+    id: "intranet_paddle",
+    label: "内网 PaddleOCR-VL",
+    description: "内网 PaddleOCR-VL /layout-parsing。地址和密钥在此保存到服务器，下一次识别即生效；留空则回退到容器环境变量。",
+    tokenField: "",
+    runtimeConfigKey: "",
+    tokenLabel: "密钥",
+    tokenPlaceholder: "留空则保持已保存的密钥",
+    validationButtonLabel: "",
+    validationIdleMessage: "内网设置",
+    validationMissingMessage: "",
+    validationUnavailableMessage: "",
+    docsUrl: "",
+    docsLabel: "",
+    supportsValidation: false,
+    requiresToken: false,
+    intranetSettings: true,
   },
   {
     id: "mineru",
@@ -32,6 +52,26 @@ export const OCR_PROVIDER_DEFINITIONS = [
     docsUrl: "https://mineru.net/apiManage/docs",
     docsLabel: "获取 Token / API 文档",
     supportsValidation: true,
+    requiresToken: true,
+    intranetSettings: false,
+  },
+  {
+    id: "intranet_mineru",
+    label: "内网 MinerU",
+    description: "内网 MinerU。地址、密钥、API 模式和档位在此保存到服务器，下一次识别即生效；留空则回退到容器环境变量。",
+    tokenField: "",
+    runtimeConfigKey: "",
+    tokenLabel: "密钥",
+    tokenPlaceholder: "留空则保持已保存的密钥",
+    validationButtonLabel: "",
+    validationIdleMessage: "内网设置",
+    validationMissingMessage: "",
+    validationUnavailableMessage: "",
+    docsUrl: "",
+    docsLabel: "",
+    supportsValidation: false,
+    requiresToken: false,
+    intranetSettings: true,
   },
 ];
 
@@ -237,4 +277,11 @@ export function normalizeOcrProvider(value: unknown) {
 
 export function getOcrProviderDefinition(provider: unknown) {
   return OCR_PROVIDER_DEFINITIONS.find((item) => item.id === normalizeOcrProvider(provider)) || OCR_PROVIDER_DEFINITIONS[0];
+}
+
+/** 云端 OCR 需要随任务提交 Token。内网 OCR 的地址和密钥走服务器配置，不占用云端 token 字段。 */
+export function ocrProviderRequiresToken(provider: unknown) {
+  const definition = getOcrProviderDefinition(provider);
+  if (definition.requiresToken === false) return false;
+  return Boolean(`${definition.tokenField || ""}`.trim());
 }

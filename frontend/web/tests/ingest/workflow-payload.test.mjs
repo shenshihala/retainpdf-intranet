@@ -73,30 +73,21 @@ test("buildTranslationPayload uses injected glossary and credential ref without 
   assert.equal(payload.model, "deepseek-chat");
   assert.equal(payload.base_url, "https://api.deepseek.com");
   assert.equal(payload.skip_title_translation, false);
-  // 没设置过时用默认协议和自动思考，和以前发出去的请求等价。
-  assert.equal(payload.api_protocol, "openai");
-  assert.equal(payload.thinking, "auto");
+  // Docker app v4.2.6 deny_unknown_fields rejects api_protocol/thinking; omit always.
+  // Newer APIs default api_protocol=openai / thinking=auto when omitted.
+  assert.equal("api_protocol" in payload, false);
+  assert.equal("thinking" in payload, false);
 });
 
-test("buildTranslationPayload sends the configured protocol and thinking depth", () => {
+test("buildTranslationPayload omits api_protocol/thinking even when developerConfig sets them", () => {
   const payload = buildTranslationPayload({
     developerConfig: { ...developerConfig(), apiProtocol: "anthropic", thinking: "high" },
     translationCredentialRef: "cred_translation",
     selectedGlossaryId: "",
     constants,
   });
-  assert.equal(payload.api_protocol, "anthropic");
-  assert.equal(payload.thinking, "high");
-});
-
-test("buildTranslationPayload 发出 Responses 协议（openai_responses）", () => {
-  const payload = buildTranslationPayload({
-    developerConfig: { ...developerConfig(), apiProtocol: "openai_responses" },
-    translationCredentialRef: "cred_translation",
-    selectedGlossaryId: "",
-    constants,
-  });
-  assert.equal(payload.api_protocol, "openai_responses");
+  assert.equal("api_protocol" in payload, false);
+  assert.equal("thinking" in payload, false);
 });
 
 // glossary_id 的空串是**用户的选择**：下拉里「不使用术语表」这个选项的 value
@@ -511,4 +502,28 @@ test("workflow controller routes UI side effects through view port", async () =>
   assert.equal(calls.some(([kind]) => kind === "developer-dialog"), true);
   assert.equal(calls.some(([kind]) => kind === "close-dialog"), true);
   assert.equal(calls.some(([kind, count]) => kind === "glossaries" && count === 1), true);
+});
+
+test("buildOcrPayload for intranet providers omits token fields and paddle_api_url", () => {
+  const paddleIntranet = buildOcrPayload({
+    pageRanges: "1-2",
+    ocrProvider: "intranet_paddle",
+    ocrToken: "",
+    defaultPaddleApiUrl: () => "https://should-not-appear.example",
+    constants,
+  });
+  assert.equal(paddleIntranet.provider, "intranet_paddle");
+  assert.equal(paddleIntranet.credential_ref, "");
+  assert.equal("paddle_token" in paddleIntranet, false);
+  assert.equal("paddle_api_url" in paddleIntranet, false);
+  assert.equal("" in paddleIntranet, false);
+
+  const mineruIntranet = buildOcrPayload({
+    pageRanges: "1",
+    ocrProvider: "intranet_mineru",
+    defaultPaddleApiUrl: () => "",
+    constants,
+  });
+  assert.equal(mineruIntranet.provider, "intranet_mineru");
+  assert.equal("mineru_token" in mineruIntranet, false);
 });

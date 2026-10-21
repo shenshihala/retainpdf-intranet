@@ -2,7 +2,7 @@ import type {
   CredentialsFields,
   OcrTokenOptions,
 } from "./state-types.js";
-import { normalizeOcrProvider } from "@/platform/config/providers.js";
+import { normalizeOcrProvider, ocrProviderRequiresToken } from "@/platform/config/providers.js";
 
 export function ocrTokenFromCredentials(
   credentials: Partial<CredentialsFields> = {},
@@ -22,8 +22,11 @@ export function hasCompleteCredentials(
   credentials: Partial<CredentialsFields> = {},
   options: OcrTokenOptions = {},
 ): boolean {
+  const providerId = normalizeOcrProvider(options.providerId || credentials.ocrProvider);
+  const ocrReady = !ocrProviderRequiresToken(providerId)
+    || Boolean(credentials.ocrCredentialRef || ocrTokenFromCredentials(credentials, options));
   return Boolean(
-    (credentials.ocrCredentialRef || ocrTokenFromCredentials(credentials, options))
+    ocrReady
     && (credentials.modelApiKey || credentials.translationCredentialRef),
   );
 }

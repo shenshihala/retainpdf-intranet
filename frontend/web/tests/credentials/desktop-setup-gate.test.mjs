@@ -78,3 +78,17 @@ test("空输入不炸", () => {
   assert.equal(hasDesktopCredentials(null), false);
   assert.equal(hasDesktopCredentials({}), false);
 });
+
+test("内网 OCR 免 Token：只要翻译 Key 齐就算配好", () => {
+  assert.equal(hasDesktopCredentials({
+    ocrProvider: "intranet_paddle",
+    modelApiKey: "sk-translation",
+  }), true);
+  assert.equal(hasDesktopCredentials({
+    ocrProvider: "intranet_mineru",
+    translationCredentialRef: "cred_translation",
+  }), true);
+  assert.equal(hasDesktopCredentials({
+    ocrProvider: "intranet_paddle",
+  }), false, "翻译仍要配");
+});

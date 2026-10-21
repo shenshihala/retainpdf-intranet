@@ -399,7 +399,7 @@ mod tests {
 
     #[test]
     fn supported_provider_keys_lists_all_supported_backends() {
-        assert_eq!(supported_provider_keys(), vec!["mineru", "paddle", "local"]);
+        assert_eq!(supported_provider_keys(), vec!["mineru", "paddle", "local", "intranet_mineru", "intranet_paddle"]);
     }
 
     #[test]

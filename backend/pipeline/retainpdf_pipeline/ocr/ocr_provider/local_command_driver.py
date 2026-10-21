@@ -11,6 +11,11 @@ from retainpdf_pipeline.ocr.document_schema import DOCUMENT_SCHEMA_REPORT_FILE_N
 from retainpdf_pipeline.ocr.document_schema import adapt_path_to_document_v1_with_report
 from retainpdf_pipeline.ocr.document_schema import validate_saved_document_path
 from retainpdf_pipeline.ocr.document_schema.providers import PROVIDER_GENERIC_FLAT_OCR
+from retainpdf_pipeline.ocr.document_schema.validator import build_validation_report
+from retainpdf_pipeline.ocr.ocr_provider.paddle_normalize import (
+    post_rescale_rebuild_paddle_text_geometry,
+    rescale_document_geometry_to_pdf,
+)
 from retainpdf_pipeline.ocr.ocr_provider.types import OcrProviderResult
 from retainpdf_base.events import emit_stage_progress
 from retainpdf_base.io import save_json
@@ -143,6 +148,7 @@ def run_local_command_ocr_to_job_dir(args: SimpleNamespace) -> OcrProviderResult
             provider_result_json_path=provider_result_json_path,
             raw_provider=raw_provider,
             document_id=job_dirs.root.name,
+            source_pdf_path=source_pdf_path,
         )
 
     validation = validate_saved_document_path(normalized_json_path)
@@ -241,6 +247,7 @@ def _materialize_normalized_document_from_local_raw(
     provider_result_json_path: Path,
     raw_provider: str,
     document_id: str,
+    source_pdf_path: Path,
 ) -> None:
     source_json_path = raw_payload_json_path if raw_payload_json_path.exists() else provider_result_json_path
     if not source_json_path.exists():
@@ -256,6 +263,26 @@ def _materialize_normalized_document_from_local_raw(
         provider_version="local",
         allow_provider_mismatch=True,
     )
+    # Official paddle/mineru normalize paths rescale OCR pixel (or other) geometry
+    # into PDF point space before persisting. local_command previously skipped that
+    # step, so intranet_paddle boxes stayed in raster coords (e.g. 1224x1584) while
+    # the reader overlays them on PDF media boxes (e.g. 612x792).
+    document = rescale_document_geometry_to_pdf(document, source_pdf_path)
+    document = post_rescale_rebuild_paddle_text_geometry(document)
+    validation = build_validation_report(document)
+    validation["coordinate_space"] = "pdf_point"
+    report = dict(report)
+    report["validation"] = validation
+    pages = document.get("pages", []) or []
+    defaults_report = dict(report.get("defaults") or {})
+    defaults_report["pages_seen"] = len(pages)
+    defaults_report["blocks_seen"] = sum(
+        len(page.get("blocks", []) or []) for page in pages
+    )
+    report["defaults"] = defaults_report
+    provider_signals = dict((document.get("derived") or {}).get("provider_signals") or {})
+    if provider_signals:
+        report["provider_signals"] = provider_signals
     save_json(normalized_json_path, document)
     save_json(normalized_report_json_path, report)
     if not provider_result_json_path.exists() and source_json_path != provider_result_json_path:

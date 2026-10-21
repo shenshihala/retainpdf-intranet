@@ -112,9 +112,11 @@ export function buildOcrPayload({
     language: constants.DEFAULT_LANGUAGE,
     page_ranges: pageRanges,
   };
-  if (!payload.credential_ref) {
-    payload[definition.tokenField] = ocrToken || "";
+  const tokenField = `${definition.tokenField || ""}`.trim();
+  if (!payload.credential_ref && tokenField) {
+    payload[tokenField] = ocrToken || "";
   }
+  // 仅云端 paddle 需要官方 API URL；内网 intranet_paddle 走容器环境变量，不带 paddle_api_url。
   if (definition.id === "paddle") {
     payload.paddle_api_url = defaultPaddleApiUrl() || "https://paddleocr.aistudio-app.com";
   }
@@ -132,14 +134,15 @@ export function buildTranslationPayload({
   preferences,
   constants,
 }: BuildTranslationPayloadOptions): TranslationInput {
+  // Omit api_protocol / thinking entirely: Docker app image v4.2.6 (deny_unknown_fields)
+  // rejects unknown translation fields. Newer servers default api_protocol=openai /
+  // thinking=auto when omitted, so this stays compatible across versions.
   return {
     ...translationQualityFields(preferences?.translationQuality),
     mode: constants.DEFAULT_MODE,
     math_mode: developerConfig.mathMode,
     model: developerConfig.model,
     base_url: developerConfig.baseUrl,
-    api_protocol: developerConfig.apiProtocol || "openai",
-    thinking: developerConfig.thinking || "auto",
     ...(modelApiKey?.trim()
       ? { api_key: modelApiKey.trim() }
       : { credential_ref: `${translationCredentialRef || ""}`.trim() }),

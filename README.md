@@ -1,3 +1,15 @@
+# RetainPDF Intranet（上游派生）
+
+本仓库是 [wxyhgk/retain-pdf](https://github.com/wxyhgk/retain-pdf) 的 fork / 派生，保留上游完整源码，并加入内网 **PaddleOCR-VL** 与 **MinerU** 的 `local_command` 封装和设置界面。上游许可证为 MIT。当前对齐的上游提交是 [`e8623fdddb425980a23446865e485802e7f9d18c`](https://github.com/wxyhgk/retain-pdf/commit/e8623fdddb425980a23446865e485802e7f9d18c)。
+
+从源码构建仍按上游文档进行：仓库根目录有 `package.json`、`Cargo.toml`，源码在 `backend/` 与 `frontend/`。步骤见 [贡献指南](CONTRIBUTING.md)、[项目文档](docs/README.md)、[后端说明](backend/README.md) 和 [本地源码运行](docs/core/local-from-source.md)。
+
+内网 Docker 交付示例在 [`intranet-overlay/`](intranet-overlay/README.md)（只含脱敏后的 `*.env.example`）。把 Paddle / MinerU 地址指到你自己的服务；界面和文档里的示例是 `http://ocr.example.local:8080`、`YOUR_MINERU_TOKEN`、`YOUR_PROXY_API_KEY`。
+
+**不要提交真实内网 URL、端口或令牌。** 不要把填好的 `app.env`、`web.env`、`auth.local.json` 放进 Git。
+
+---
+
 # RetainPDF：PDF 保留排版翻译工具
 
 <p align="center">

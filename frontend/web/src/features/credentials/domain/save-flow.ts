@@ -7,6 +7,7 @@
 import {
   getOcrProviderDefinition,
   inferTranslationProvider,
+  ocrProviderRequiresToken,
   TRANSLATION_PROVIDER_DEFINITION,
 } from "@/platform/config/providers.js";
 import { savePersistedBrowserStoredConfig } from "@/platform/config/persisted-config.js";
@@ -125,11 +126,13 @@ export function createBrowserCredentialSaveFlow({
     const existingTranslationCredentialRef = sameTranslationProvider ? `${existing.translationCredentialRef || ""}`.trim() : "";
     const translationError = translationConfigError(values.modelBaseUrl, values.modelName);
     const workersError = translationWorkersError(values.translationWorkers, translation.getCurrentProvider());
-    if ((!ocrToken && !existingOcrCredentialRef)
+    const needsOcrToken = ocrProviderRequiresToken(definition.id);
+    const ocrMissing = needsOcrToken && !ocrToken && !existingOcrCredentialRef;
+    if (ocrMissing
       || (!modelApiKey && !existingTranslationCredentialRef)
       || translationError
       || workersError) {
-      if (!ocrToken && !existingOcrCredentialRef) {
+      if (ocrMissing) {
         viewPort.setOcrValidationMessage(definition.validationMissingMessage, "error", definition.id);
       }
       if (!modelApiKey && !existingTranslationCredentialRef) {
@@ -138,7 +141,9 @@ export function createBrowserCredentialSaveFlow({
         viewPort.setDeepSeekValidationMessage(translationError || workersError, "error");
       }
       viewPort.setDialogStatus(
-        translationError || workersError || "请填写尚未保存的 OCR Token 或翻译 API Key",
+        translationError || workersError || (ocrMissing
+          ? "请填写尚未保存的 OCR Token 或翻译 API Key"
+          : "请填写尚未保存的翻译 API Key"),
         "error",
       );
       return;

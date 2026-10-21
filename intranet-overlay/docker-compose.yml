@@ -1,0 +1,98 @@
+name: retainpdf-intranet
+
+services:
+  app:
+    image: wxyhgk/retainpdf-app:candidate-e8623fdddb425980a23446865e485802e7f9d18c
+    restart: unless-stopped
+    env_file:
+      - ./docker/app.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "41000:41000"
+      - "42000:42000"
+    volumes:
+      - app_data:/data
+      - ./docker/auth.local.json:/app/services/api/auth.local.json:ro
+      - ./config/ocr_providers.json:/app/services/config/ocr_providers.json:ro
+      - ./ocr_provider/intranet_paddle_layout_wrapper.py:/usr/local/lib/python3.11/site-packages/retainpdf_pipeline/ocr/ocr_provider/intranet_paddle_layout_wrapper.py:ro
+      - ./ocr_provider/intranet_mineru_wrapper.py:/usr/local/lib/python3.11/site-packages/retainpdf_pipeline/ocr/ocr_provider/intranet_mineru_wrapper.py:ro
+      - ./ocr_provider/local_command_driver.py:/usr/local/lib/python3.11/site-packages/retainpdf_pipeline/ocr/ocr_provider/local_command_driver.py:ro
+      - ./ocr_provider/intranet_ocr_config.py:/usr/local/lib/python3.11/site-packages/retainpdf_pipeline/ocr/ocr_provider/intranet_ocr_config.py:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:41000/ready"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 40s
+
+  # Reads and writes /data/secrets/intranet-ocr-config.json. The app user is
+  # uid 10001; this service uses the same uid so the OCR driver can read it.
+  intranet-ocr-config:
+    image: python:3.11-slim-bookworm
+    restart: unless-stopped
+    user: "10001:10001"
+    depends_on:
+      app:
+        condition: service_healthy
+    env_file:
+      - ./docker/app.env
+    environment:
+      RETAIN_INTRANET_OCR_CONFIG_BIND: 0.0.0.0
+      RETAIN_INTRANET_OCR_CONFIG_PORT: "8080"
+      RETAIN_INTRANET_OCR_CONFIG_AUTH_FILE: /auth/auth.local.json
+      RUST_API_DATA_ROOT: /data
+    entrypoint: ["python3", "/opt/intranet-overlay/intranet_ocr_config_server.py"]
+    ports:
+      - "30000:8080"
+    volumes:
+      - app_data:/data
+      - ./ocr_provider/intranet_ocr_config.py:/opt/intranet-overlay/intranet_ocr_config.py:ro
+      - ./ocr_provider/intranet_ocr_config_server.py:/opt/intranet-overlay/intranet_ocr_config_server.py:ro
+      - ./docker/auth.local.json:/auth/auth.local.json:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python3",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 10s
+
+  web:
+    image: wxyhgk/retainpdf-web:latest
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+      intranet-ocr-config:
+        condition: service_healthy
+    env_file:
+      - ./docker/web.env
+    ports:
+      - "8080:80"
+    volumes:
+      # Patched frontend with intranet OCR settings. Not shipped in the
+      # open-source tarball — rebuild web-dist from ../sources/frontend
+      # (or upstream RetainPDF + those files). See WEB_OVERLAY.md.
+      - ./web-dist:/usr/share/nginx/html/dist:ro
+      - ./web-html/index.html:/usr/share/nginx/html/index.html:ro
+      - ./web-html/admin.html:/usr/share/nginx/html/admin.html:ro
+      - ./web-html/detail.html:/usr/share/nginx/html/detail.html:ro
+      - ./web-html/reader.html:/usr/share/nginx/html/reader.html:ro
+      # Official image envsubst's this template. One-time recreate of web;
+      # later URL/token edits do not need a recreate.
+      - ./docker/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/health >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  app_data:

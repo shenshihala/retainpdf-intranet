@@ -17,6 +17,7 @@ import {
   OCR_PROVIDER_DEFINITIONS,
   TRANSLATION_PROVIDER_OPTIONS,
   inferTranslationProvider,
+  ocrProviderRequiresToken,
 } from "@/platform/config/providers.js";
 import {
   applyTranslationProvider,
@@ -232,20 +233,26 @@ export function AdminPlatformView({ api = defaultPlatformApi }: { api?: Platform
                 {ocrProviders.map((id) => <option key={id} value={id}>{ocrProviderLabel(id)}</option>)}
               </select>
             </label>
-            <label className="admin-field admin-field-wide">
-              <span>{ocrTokenLabel(form.ocrProvider)}</span>
-              <input
-                type="password"
-                autoComplete="new-password"
-                value={form.ocrToken}
-                placeholder={ocrChanged ? `换了服务，要填新的 ${ocrTokenLabel(form.ocrProvider)}` : secretPlaceholder(view?.ocr.token_configured, view?.ocr.token_hint, ocrTokenLabel(form.ocrProvider))}
-                onChange={(e) => update({ ocrToken: e.target.value })}
-              />
-            </label>
+            {ocrProviderRequiresToken(form.ocrProvider) ? (
+              <label className="admin-field admin-field-wide">
+                <span>{ocrTokenLabel(form.ocrProvider)}</span>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={form.ocrToken}
+                  placeholder={ocrChanged ? `换了服务，要填新的 ${ocrTokenLabel(form.ocrProvider)}` : secretPlaceholder(view?.ocr.token_configured, view?.ocr.token_hint, ocrTokenLabel(form.ocrProvider))}
+                  onChange={(e) => update({ ocrToken: e.target.value })}
+                />
+              </label>
+            ) : (
+              <p className="admin-sub">{ocrDef?.validationUnavailableMessage || ocrDef?.description || "无需 Token。"}</p>
+            )}
           </div>
-          {ocrChanged ? <p className="admin-sub admin-warn-text" data-admin-ocr-changed="true">换了 OCR 服务：旧的 token 在新服务下用不了，保存前要填新的。</p> : null}
+          {ocrChanged && ocrProviderRequiresToken(form.ocrProvider) ? <p className="admin-sub admin-warn-text" data-admin-ocr-changed="true">换了 OCR 服务：旧的 token 在新服务下用不了，保存前要填新的。</p> : null}
           <div className="admin-card-foot">
-            <button type="button" className="auth-secondary" data-admin-test-target="ocr" disabled={tests.ocr.busy} onClick={() => void runTest("ocr")}>检测 OCR</button>
+            {ocrDef?.supportsValidation ? (
+              <button type="button" className="auth-secondary" data-admin-test-target="ocr" disabled={tests.ocr.busy} onClick={() => void runTest("ocr")}>检测 OCR</button>
+            ) : null}
             <TestLine state={tests.ocr} />
             {ocrDef?.docsUrl ? <a className="auth-link admin-docs-link" href={ocrDef.docsUrl} target="_blank" rel="noopener noreferrer">{ocrDef.docsLabel}</a> : null}
           </div>

@@ -3,6 +3,7 @@
 import type { PlatformSettingsInput, PlatformSettingsView, PlatformTestInput, PlatformTestTarget } from "@retainpdf/api/admin-platform";
 import {
   OCR_PROVIDER_DEFINITIONS,
+  ocrProviderRequiresToken,
   TRANSLATION_API_PROTOCOL_OPTIONS,
   TRANSLATION_PROVIDER_OPTIONS,
   TRANSLATION_THINKING_OPTIONS,
@@ -88,7 +89,7 @@ export function platformFormProblem(form: PlatformForm, view: PlatformSettingsVi
   const workers = form.maxWorkers.trim();
   if (!/^\d+$/.test(workers) || Number(workers) > limit) return `并发上限要填 0～${limit} 的整数（0 表示不限）。`;
   if (!form.apiKey.trim() && !view?.translation.api_key_configured) return "请填写翻译 API Key。";
-  if (!form.ocrToken.trim()) {
+  if (ocrProviderRequiresToken(form.ocrProvider) && !form.ocrToken.trim()) {
     if (ocrProviderChanged(form, view)) return `换了 OCR 服务，要同时填 ${ocrTokenLabel(form.ocrProvider)}（旧的 token 在新服务下用不了）。`;
     if (!view?.ocr.token_configured) return `请填写 ${ocrTokenLabel(form.ocrProvider)}。`;
   }

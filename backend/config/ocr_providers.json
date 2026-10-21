@@ -6,7 +6,10 @@
       "credential": {
         "field": "mineru_token",
         "env": "RETAIN_MINERU_API_TOKEN",
-        "required_for": ["remote_url", "local_upload"]
+        "required_for": [
+          "remote_url",
+          "local_upload"
+        ]
       },
       "options": {
         "model_version": {
@@ -33,13 +36,19 @@
       "credential": {
         "field": "paddle_token",
         "env": "RETAIN_PADDLE_API_TOKEN",
-        "required_for": ["remote_url", "local_upload"]
+        "required_for": [
+          "remote_url",
+          "local_upload"
+        ]
       },
       "options": {
         "transport": {
           "type": "string",
           "default": "official_http",
-          "choices": ["official_http", "official_cli"]
+          "choices": [
+            "official_http",
+            "official_cli"
+          ]
         },
         "paddle_api_url": {
           "type": "string",
@@ -73,6 +82,36 @@
           "type": "string",
           "env": "RETAIN_OCR_RAW_PROVIDER",
           "default": "generic_flat_ocr"
+        }
+      }
+    },
+    "intranet_paddle": {
+      "display_name": "Intranet PaddleOCR-VL",
+      "kind": "local_command",
+      "credential": null,
+      "options": {
+        "command": {
+          "type": "string",
+          "default": "python -m retainpdf_pipeline.ocr.ocr_provider.intranet_paddle_layout_wrapper"
+        },
+        "raw_provider": {
+          "type": "string",
+          "default": "paddle"
+        }
+      }
+    },
+    "intranet_mineru": {
+      "display_name": "Intranet MinerU",
+      "kind": "local_command",
+      "credential": null,
+      "options": {
+        "command": {
+          "type": "string",
+          "default": "python -m retainpdf_pipeline.ocr.ocr_provider.intranet_mineru_wrapper"
+        },
+        "raw_provider": {
+          "type": "string",
+          "default": "mineru"
         }
       }
     }
